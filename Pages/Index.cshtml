@@ -1,0 +1,153 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome to AI-Powered Chat</h1>
+    <p class="lead">Experience seamless real-time communication with our intelligent chatbot, powered by ASP.NET Core and SignalR.</p>
+    <div class="content-section">
+        <h2>Why Our Chatbot?</h2>
+        <p>Our application offers a dynamic chat experience with features designed for both users and administrators:</p>
+        <ul class="feature-list">
+            <li><strong>Real-Time Messaging:</strong> Engage in instant conversations with our AI, with support for editing and deleting messages.</li>
+            <li><strong>Session Management:</strong> Easily switch between chat sessions or start a new one for a personalized experience.</li>
+            <li><strong>Admin Oversight:</strong> Administrators can review and approve messages to ensure quality and compliance.</li>
+            <li><strong>Responsive Design:</strong> Enjoy a smooth experience on any device, from desktops to mobiles.</li>
+        </ul>
+        <div class="cta-buttons">
+            <a href="/Chat/Index" class="btn btn-primary">Start Chatting</a>
+            <a href="/AdminPanel/Index" class="btn btn-secondary">Admin Dashboard</a>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: #f5f7fa;
+        color: #333;
+    }
+
+    .text-center {
+        max-width: 900px;
+        margin: 40px auto;
+        padding: 30px;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .display-4 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #1a202c;
+        margin-bottom: 15px;
+        transition: color 0.3s ease;
+    }
+
+    .text-center:hover .display-4 {
+        color: #3b82f6;
+    }
+
+    .lead {
+        font-size: 1.25rem;
+        color: #374151;
+        margin-bottom: 30px;
+        line-height: 1.6;
+    }
+
+    .content-section {
+        text-align: left;
+        margin-top: 20px;
+    }
+
+    .content-section h2 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: #1a202c;
+        margin-bottom: 15px;
+    }
+
+    .content-section p {
+        font-size: 1.1rem;
+        color: #374151;
+        line-height: 1.6;
+        margin-bottom: 20px;
+    }
+
+    .feature-list {
+        list-style: none;
+        padding: 0;
+        margin-bottom: 30px;
+    }
+
+    .feature-list li {
+        font-size: 1rem;
+        color: #374151;
+        line-height: 1.5;
+        margin-bottom: 15px;
+        position: relative;
+        padding-left: 30px;
+    }
+
+    .feature-list li::before {
+        content: '✔';
+        color: #10b981;
+        position: absolute;
+        left: 0;
+        font-size: 1.2rem;
+    }
+
+    .cta-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+    }
+
+    .btn {
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+        background: #3b82f6;
+        color: white;
+        border: none;
+    }
+
+    .btn-primary:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+        border: none;
+    }
+
+    .btn-secondary:hover {
+        background: #4b5563;
+        transform: translateY(-1px);
+    }
+
+    a {
+        color: #10b981;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    a:hover {
+        color: #059669;
+        text-decoration: underline;
+    }
+
+
+</style>

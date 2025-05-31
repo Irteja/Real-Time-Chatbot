@@ -1,0 +1,581 @@
+@page
+@model AiPoweredRealTimeChatBot.Pages.ChatModel
+@{
+    ViewData["Title"] = "Chat with AI";
+}
+
+<h1>Chat with AI</h1>
+
+<div class="chat-container">
+    <div class="session-controls">
+        <select id="sessionSelect" class="form-control mb-2">
+            <option value="">Select a session</option>
+        </select>
+        <button id="newChatButton" class="btn btn-secondary mb-2">New Chat</button>
+        <input type="hidden" id="sessionId" asp-for="Input.SessionId" />
+    </div>
+
+    <div class="messages" id="messages">
+        @foreach (var message in Model.Messages)
+        {
+            <div class="message @(message.Sender == "User" ? "user-message" : "bot-message")" data-message-id="@message.Id">
+                <strong>@message.Sender</strong> (@message.Timestamp.ToString("g")):
+                <span class="message-content">@message.Content</span>
+                @if (message.Sender == "User")
+                {
+                    <button class="edit-button btn btn-sm btn-outline-primary ml-2"
+                        onclick="startEdit('@message.Id', '@message.Content')">Edit</button>
+
+                    <div class="edit-form" style="display: none;">
+                        <textarea class="form-control edit-textarea" rows="2">@message.Content</textarea>
+                        <button class="save-button btn btn-sm btn-primary mt-1" onclick="saveEdit('@message.Id')">Save</button>
+                        <button class="cancel-button btn btn-sm btn-secondary mt-1"
+                            onclick="cancelEdit('@message.Id')">Cancel</button>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <form id="chatForm">
+        <div class="form-group">
+            <label for="messageInput">Message</label>
+            <textarea id="messageInput" asp-for="Input.Message" class="form-control" rows="4"></textarea>
+            <span asp-validation-for="Input.Message" class="text-danger"></span>
+        </div>
+        <button type="submit" class="btn btn-primary">Send</button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/lib/microsoft/signalr/dist/browser/signalr.js"></script>
+    <script>
+        // SignalR connection
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/chatHub")
+            .withAutomaticReconnect()
+            .build();
+
+        // Handle incoming messages
+        connection.on("ReceiveMessage", (message) => {
+            const messagesDiv = document.getElementById("messages");
+            let messageDiv = document.querySelector(`.message[data-message-id="${message.id}"]`);
+            let originalMessageDiv = document.querySelector(`.message[data-message-id="${message.userId}"]`);
+            if (messageDiv) {
+                // Update existing message
+                messageDiv.querySelector(".message-content").textContent = message.message;
+            }
+            else if (originalMessageDiv) {
+                messageDiv = document.createElement("div");
+                messageDiv.className = `message ${message.sender === "User" ? "user-message" : "bot-message"}`;
+                messageDiv.setAttribute("data-message-id", message.id);
+                messageDiv.innerHTML = `
+                                                            <strong>${message.sender}</strong> (${new Date(message.timestamp).toLocaleString()}): 
+                                                            <span class="message-content">${message.message}</span>
+                                                            ${message.sender === "User" ? `
+                                                                <button class="edit-button btn btn-sm btn-outline-primary ml-2" onclick="startEdit('${message.id}', '${message.message}')">Edit</button>
+
+                                                                <div class="edit-form" style="display: none;">
+                                                                    <textarea class="form-control edit-textarea" rows="2">${message.message}</textarea>
+                                                                    <button class="save-button btn btn-sm btn-primary mt-1" onclick="saveEdit('${message.id}')">Save</button>
+                                                                    <button class="cancel-button btn btn-sm btn-secondary mt-1" onclick="cancelEdit('${message.id}')">Cancel</button>
+                                                                </div>
+                                                            ` : ""}
+                                                        `;
+                originalMessageDiv.after(messageDiv);
+            }
+            else {
+                // Add new message
+                messageDiv = document.createElement("div");
+                messageDiv.className = `message ${message.sender === "User" ? "user-message" : "bot-message"}`;
+                messageDiv.setAttribute("data-message-id", message.id);
+                messageDiv.innerHTML = `
+                                                            <strong>${message.sender}</strong> (${new Date(message.timestamp).toLocaleString()}): 
+                                                            <span class="message-content">${message.message}</span>
+                                                            ${message.sender === "User" ? `
+                                                                <button class="edit-button btn btn-sm btn-outline-primary ml-2" onclick="startEdit('${message.id}', '${message.message}')">Edit</button>
+
+                                                                <div class="edit-form" style="display: none;">
+                                                                    <textarea class="form-control edit-textarea" rows="2">${message.message}</textarea>
+                                                                    <button class="save-button btn btn-sm btn-primary mt-1" onclick="saveEdit('${message.id}')">Save</button>
+                                                                    <button class="cancel-button btn btn-sm btn-secondary mt-1" onclick="cancelEdit('${message.id}')">Cancel</button>
+                                                                </div>
+                                                            ` : ""}
+                                                        `;
+                messagesDiv.appendChild(messageDiv);
+            }
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+
+        // Start SignalR connection
+        connection.start().catch(error => console.error("SignalR Connection Error:", error));
+
+        // Load sessions
+        async function loadSessions() {
+            try {
+                const response = await fetch("http://localhost:5074/api/chat/sessions", {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" }
+                });
+                if (!response.ok) {
+                    console.error(`Failed to load sessions: ${response.status}`);
+                    return;
+                }
+                const sessions = await response.json();
+                const sessionSelect = document.getElementById("sessionSelect");
+                sessionSelect.innerHTML = '<option value="">Select a session</option>';
+                sessions.forEach(session => {
+                    const option = document.createElement("option");
+                    option.value = session.sessionId;
+                    option.text = session.name;
+                    sessionSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error loading sessions:", error);
+            }
+        }
+
+        // Load messages for selected session
+        async function loadMessages(sessionId) {
+            if (!sessionId) {
+                document.getElementById("messages").innerHTML = "";
+                return;
+            }
+            try {
+                const response = await fetch(`http://localhost:5074/api/chat/history?sessionId=${sessionId}`, {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" }
+                });
+                if (!response.ok) {
+                    console.error(`Failed to load messages: ${response.status}`);
+                    return;
+                }
+                const messages = await response.json();
+                const messagesDiv = document.getElementById("messages");
+                messagesDiv.innerHTML = "";
+                messages.forEach(msg => {
+                    const div = document.createElement("div");
+                    div.className = `message ${msg.sender === "User" ? "user-message" : "bot-message"}`;
+                    div.setAttribute("data-message-id", msg.id);
+                    div.innerHTML = `
+                                                                <strong>${msg.sender}</strong> (${new Date(msg.timestamp).toLocaleString()}): 
+                                                                <span class="message-content">${msg.message}</span>
+                                                                ${msg.sender === "User" ? `
+                                                                    <button class="edit-button btn btn-sm btn-outline-primary ml-2" onclick="startEdit('${msg.id}', '${msg.message}')">Edit</button>
+                                                                    <button class="delete-button btn btn-sm btn-outline-primary ml-2" onclick="deleteMessage('${msg.id}')">Delete</button>
+                                                                    <div class="edit-form" style="display: none;">
+                                                                        <textarea class="form-control edit-textarea" rows="2">${msg.message}</textarea>
+                                                                        <button class="save-button btn btn-sm btn-primary mt-1" onclick="saveEdit('${msg.id}')">Save</button>
+                                                                        <button class="cancel-button btn btn-sm btn-secondary mt-1" onclick="cancelEdit('${msg.id}')">Cancel</button>
+                                                                    </div>
+                                                                ` : ""}
+                                                            `;
+                    messagesDiv.appendChild(div);
+                });
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            } catch (error) {
+                console.error("Error loading messages:", error);
+            }
+        }
+
+        // Edit functionality
+        function startEdit(messageId, content) {
+            const messageDiv = document.querySelector(`.message[data-message-id="${messageId}"]`);
+            messageDiv.querySelector(".edit-button").style.display = "none";
+            messageDiv.querySelector(".message-content").style.display = "none";
+            messageDiv.querySelector(".edit-form").style.display = "block";
+        }
+
+        function cancelEdit(messageId) {
+            const messageDiv = document.querySelector(`.message[data-message-id="${messageId}"]`);
+            messageDiv.querySelector(".edit-button").style.display = "inline-block";
+            messageDiv.querySelector(".message-content").style.display = "inline-block";
+            messageDiv.querySelector(".edit-form").style.display = "none";
+            messageDiv.querySelector(".edit-textarea").value = messageDiv.querySelector(".message-content").textContent;
+        }
+
+        async function saveEdit(messageId) {
+            const messageDiv = document.querySelector(`.message[data-message-id="${messageId}"]`);
+            const newContent = await messageDiv.querySelector(".edit-textarea").value;
+            if (!newContent) {
+                alert("Message cannot be empty.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`http://localhost:5074/api/chat/${messageId}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: newContent })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`Edit Error: ${response.status} - ${errorText}`);
+                    alert(`Failed to edit message: ${response.statusText}`);
+                    return;
+                }
+
+                // Updates will be handled via SignalR
+                cancelEdit(messageId);
+            } catch (error) {
+                console.error("Edit Fetch Error:", error);
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Initialize
+        loadSessions();
+        document.getElementById("sessionId").value = "";
+
+        // New Chat button
+        document.getElementById("newChatButton").addEventListener("click", async () => {
+            const newSessionId = crypto.randomUUID();
+            document.getElementById("sessionId").value = newSessionId;
+            document.getElementById("sessionSelect").value = "";
+            document.getElementById("messages").innerHTML = "";
+            if (connection.state === signalR.HubConnectionState.Connected) {
+                await connection.invoke("JoinSession", newSessionId);
+            }
+        });
+
+        // Session selection
+        document.getElementById("sessionSelect").addEventListener("change", async (e) => {
+            const sessionId = e.target.value;
+            const previousSessionId = document.getElementById("sessionId").value;
+            document.getElementById("sessionId").value = sessionId;
+            if (connection.state === signalR.HubConnectionState.Connected) {
+                if (previousSessionId) {
+                    await connection.invoke("LeaveSession", previousSessionId);
+                }
+                if (sessionId) {
+                    await connection.invoke("JoinSession", sessionId);
+                }
+            }
+            loadMessages(sessionId);
+        });
+
+        // Send message
+        document.getElementById("chatForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const messageInput = document.getElementById("messageInput");
+            const sessionIdInput = document.getElementById("sessionId");
+            const message = messageInput.value;
+            let sessionId = sessionIdInput.value || null;
+            if (!message) return;
+            
+            try {
+                const response = await fetch("http://localhost:5074/api/chat/send", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ sessionId, message })
+                });
+                messageInput.value = "";
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`API Error: ${response.status} - ${errorText}`);
+                    alert(`Failed to send message: ${response.statusText}`);
+                    return;
+                }
+                await loadSessions();
+
+
+                document.getElementById("sessionSelect").value = sessionIdInput.value;
+
+
+            } catch (error) {
+                console.error("Fetch Error:", error);
+                alert(`Error: ${error.message}`);
+            }
+        });
+
+
+        //handling incoming delete messages
+        connection.on("MessageDeleted", (messageId) => {
+            const messageDiv = document.querySelector(`.message[data-message-id="${messageId}"]`);
+            if (messageDiv) {
+                messageDiv.remove();
+            }
+        });
+        async function deleteMessage(messageId) {
+            if (!confirm("Are you sure you want to delete this message?")) return;
+
+            try {
+                const response = await fetch(`http://localhost:5074/api/chat/${messageId}`, {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`Delete Error: ${response.status} - ${errorText}`);
+                    alert(`Failed to delete message: ${response.statusText}`);
+                    return;
+                }
+
+                // Remove message from UI
+                const messageDiv = document.querySelector(`.message[data-message-id="${messageId}"]`);
+                if (messageDiv) {
+                    messageDiv.remove();
+                }
+            } catch (error) {
+                console.error("Delete Fetch Error:", error);
+                alert(`Error: ${error.message}`);
+            }
+        }
+    </script>
+}
+
+<style>
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: #f5f7fa;
+        color: #333;
+    }
+
+    .chat-container {
+        max-width: 900px;
+        margin: 20px auto;
+        padding: 30px;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    h1 {
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #1a202c;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .session-controls {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+
+    .session-controls select,
+    .session-controls button {
+        border-radius: 8px;
+        padding: 10px 15px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .session-controls select {
+        flex: 1;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #4a5568;
+    }
+
+    .session-controls select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .session-controls button {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        font-weight: 500;
+    }
+
+    .session-controls button:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+    }
+
+    .messages {
+        border: 1px solid #e2e8f0;
+        background: #fafafa;
+        padding: 20px;
+        min-height: 300px;
+        max-height: 500px;
+        overflow-y: auto;
+        border-radius: 12px;
+        margin-bottom: 30px;
+        position: relative;
+    }
+
+    .message {
+        margin: 10px 0;
+        padding: 15px 20px;
+        border-radius: 12px;
+        position: relative;
+        transition: all 0.2s ease;
+        max-width: 80%;
+        word-wrap: break-word;
+    }
+
+    .user-message {
+        background: linear-gradient(135deg, #3b82f6, #60a5fa);
+        color: white;
+        margin-left: 20%;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .bot-message {
+        background: #e5e7eb;
+        color: #1f2937;
+        margin-right: 20%;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .message strong {
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .message-content {
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+
+    .edit-button, .delete-button {
+        margin-left: 10px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        padding: 5px 12px;
+        transition: all 0.2s ease;
+    }
+
+    .edit-button {
+        border-color: #93c5fd;
+        color: #93c5fd;
+    }
+
+    .edit-button:hover {
+        background: #93c5fd;
+        color: white;
+    }
+
+    .delete-button {
+        border-color: #f87171;
+        color: #f87171;
+    }
+
+    .delete-button:hover {
+        background: #f87171;
+        color: white;
+    }
+
+    .edit-form {
+        margin-top: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .edit-form textarea {
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        resize: none;
+        font-size: 0.95rem;
+        padding: 10px;
+    }
+
+    .edit-form .save-button,
+    .edit-form .cancel-button {
+        border-radius: 6px;
+        padding: 8px 15px;
+        font-size: 0.9rem;
+    }
+
+    .edit-form .save-button {
+        background: #3b82f6;
+        border: none;
+        color: white;
+    }
+
+    .edit-form .save-button:hover {
+        background: #2563eb;
+    }
+
+    .edit-form .cancel-button {
+        background: #6b7280;
+        border: none;
+        color: white;
+    }
+
+    .edit-form .cancel-button:hover {
+        background: #4b5563;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .form-group textarea {
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        padding: 12px;
+        font-size: 1rem;
+        width: 100%;
+        resize: none;
+        transition: all 0.2s ease;
+    }
+
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-group .btn-primary {
+        background: #3b82f6;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 20px;
+        font-size: 1rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .form-group .btn-primary:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+    }
+
+    .text-danger {
+        font-size: 0.85rem;
+        margin-top: 5px;
+        display: block;
+    }
+
+    /* Scrollbar Styling */
+    .messages::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .messages::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+
+    .messages::-webkit-scrollbar-thumb {
+        background: #3b82f6;
+        border-radius: 10px;
+    }
+
+    .messages::-webkit-scrollbar-thumb:hover {
+        background: #2563eb;
+    }
+
+
+</style>

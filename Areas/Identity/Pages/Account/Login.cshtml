@@ -1,0 +1,184 @@
+﻿@page
+@model LoginModel
+
+@{
+    ViewData["Title"] = "Log in";
+}
+
+<h1>@ViewData["Title"]</h1>
+<div class="row">
+    <div class="col-md-4">
+        <section>
+            <form id="account" method="post">
+                <h2>Use a local account to log in.</h2>
+                <hr />
+                <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+                <div class="form-floating mb-3">
+                    <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
+                    <label asp-for="Input.Email" class="form-label">Email</label>
+                    <span asp-validation-for="Input.Email" class="text-danger"></span>
+                </div>
+                <div class="form-floating mb-3">
+                    <input asp-for="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
+                    <label asp-for="Input.Password" class="form-label">Password</label>
+                    <span asp-validation-for="Input.Password" class="text-danger"></span>
+                </div>
+                <div class="checkbox mb-3">
+                    <label asp-for="Input.RememberMe" class="form-label">
+                        <input class="form-check-input" asp-for="Input.RememberMe" />
+                        @Html.DisplayNameFor(m => m.Input.RememberMe)
+                    </label>
+                </div>
+                <div>
+                    <button id="login-submit" type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
+                </div>
+                <div>
+                    <p>
+                        <a id="forgot-password" asp-page="./ForgotPassword">Forgot your password?</a>
+                    </p>
+                    <p>
+                        <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl">Register as a new user</a>
+                    </p>
+                    <p>
+                        <a id="resend-confirmation" asp-page="./ResendEmailConfirmation">Resend email confirmation</a>
+                    </p>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+
+<style>
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: #f5f7fa;
+        color: #333;
+    }
+
+    .row {
+        display: flex;
+        justify-content: center;
+        margin: 40px auto;
+        max-width: 900px;
+    }
+
+    .col-md-4 {
+        width: 100%;
+        max-width: 400px;
+        padding: 30px;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #1a202c;
+        text-align: center;
+        margin-bottom: 20px;
+        transition: color 0.3s ease;
+    }
+
+    .col-md-4:hover h1 {
+        color: #3b82f6;
+    }
+
+    h2 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: #1a202c;
+        margin-bottom: 15px;
+    }
+
+    hr {
+        border-color: #e2e8f0;
+        margin: 20px 0;
+    }
+
+    .form-floating {
+        position: relative;
+        margin-bottom: 20px;
+    }
+
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        padding: 12px;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-label {
+        font-size: 0.95rem;
+        color: #374151;
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+
+    .checkbox {
+        margin-bottom: 20px;
+    }
+
+    .form-check-input {
+        margin-right: 8px;
+        accent-color: #3b82f6;
+    }
+
+    .form-check-input:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .btn-primary {
+        background: #3b82f6;
+        border: none;
+        border-radius: 8px;
+        padding: 12px;
+        font-size: 1rem;
+        font-weight: 500;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+    }
+
+    .text-danger {
+        font-size: 0.85rem;
+        margin-top: 5px;
+        display: block;
+    }
+
+    p {
+        font-size: 0.95rem;
+        color: #374151;
+        margin: 10px 0;
+    }
+
+    a {
+        color: #10b981;
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s ease;
+    }
+
+    a:hover {
+        color: #059669;
+        text-decoration: underline;
+    }
+
+</style>
