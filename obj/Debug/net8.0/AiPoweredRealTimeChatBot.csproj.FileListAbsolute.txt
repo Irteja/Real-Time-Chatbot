@@ -294,3 +294,4 @@
 /media/irteja/New Volume/web project/AiPoweredRealTimeChatBot/bin/Debug/net8.0/Microsoft.Extensions.Features.dll
 /media/irteja/New Volume/web project/AiPoweredRealTimeChatBot/bin/Debug/net8.0/System.Net.ServerSentEvents.dll
 /media/irteja/New Volume/web project/AiPoweredRealTimeChatBot/bin/Debug/net8.0/System.Threading.Channels.dll
+/media/irteja/New Volume/web project/AiPoweredRealTimeChatBot/obj/Debug/net8.0/AiPoweredRealTimeChatBot.sourcelink.json
